@@ -101,6 +101,28 @@ def money(v):
     return float(m.group(1)) if m else None
 
 
+# Review 2026-11-09: the site's "example sites" column often holds category phrases
+# ("Swiss sites") or defunct names. Only real host names are kept.
+_HOST = re.compile(r"^[a-z0-9-]+(\.[a-z0-9-]+)+$")
+_DEFUNCT = {"vine.co", "angel.co"}
+
+
+def clean_examples(items):
+    return [x for x in items if _HOST.match(x) and x not in _DEFUNCT]
+
+
+# Registry names checked against the IANA root zone database (technical contact) and the
+# registry sites on 2026-11-09; the site's text was wrong or vague for these.
+REGISTRY_FIX = {
+    "tv": "GoDaddy Registry (for Tuvalu)",
+    "io": "Internet Computer Bureau (Identity Digital)",
+    "sh": "Internet Computer Bureau (Identity Digital)",
+    "me": "doMEn (.ME registry), Montenegro",
+    "gg": "Island Networks Ltd. (nic.gg)",
+    "so": "soNIC (nic.so)",
+    "co": ".CO Internet registry (registry.co)",
+}
+
 detail = {}
 for slug in slugs:
     try:
@@ -131,7 +153,7 @@ for slug in slugs:
         "launched": cells.get("Launched", ""),
         "restrictions": cells.get("Restrictions", ""),
         "siteType": typ,
-        "examples": ex[:4],
+        "examples": clean_examples(ex)[:4],
         "priceTypical": num(price), "priceLow": num(lo), "priceHigh": num(hi),
         "restricted": bool(j.get("restricted")) if j else price is None,
         "updated": upd or site.get("lastUpdated", ""),
@@ -159,6 +181,8 @@ for lab in labels:
     if lab in enriched:
         e = dict(e)
         e.pop("siteType", None)
+        if lab in REGISTRY_FIX:
+            e["registry"] = REGISTRY_FIX[lab]
         o["d"] = e
     tlds.append(o)
 
